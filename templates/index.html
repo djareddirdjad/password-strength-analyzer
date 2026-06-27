@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Password Strength Analyzer</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    :root{--bg:#0a0a0f;--surface:#111118;--border:#1e1e2e;--text:#e2e2f0;--muted:#6b6b8a;--card:#13131c;
+      --red:#f87171;--orange:#fb923c;--yellow:#facc15;--green:#4ade80;--purple:#7c6af7}
+    body{background:var(--bg);color:var(--text);font-family:'Space Grotesk',sans-serif;min-height:100vh}
+    header{padding:48px 32px 32px;max-width:760px;margin:0 auto;border-bottom:1px solid var(--border)}
+    header h1{font-size:clamp(1.8rem,4vw,2.8rem);font-weight:700;letter-spacing:-0.03em}
+    header h1 span{color:var(--purple)}
+    header p{margin-top:8px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.85rem}
+    .main{max-width:760px;margin:40px auto;padding:0 32px 64px}
+    .input-wrap{position:relative;margin-bottom:28px}
+    .input-wrap input{
+      width:100%;background:var(--surface);border:2px solid var(--border);
+      color:var(--text);padding:18px 56px 18px 20px;font-size:1.1rem;
+      font-family:'JetBrains Mono',monospace;outline:none;border-radius:10px;
+      transition:border-color .2s;letter-spacing:.05em
+    }
+    .input-wrap input:focus{border-color:var(--purple)}
+    .input-wrap input::placeholder{color:var(--muted);letter-spacing:0}
+    .toggle-vis{position:absolute;right:16px;top:50%;transform:translateY(-50%);
+      background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.1rem;padding:4px}
+    .meter-wrap{margin-bottom:28px}
+    .meter-bar{height:6px;background:var(--border);border-radius:3px;overflow:hidden;margin-bottom:10px}
+    .meter-fill{height:100%;border-radius:3px;transition:width .4s ease,background .4s ease;width:0}
+    .meter-label{display:flex;justify-content:space-between;align-items:center}
+    .level-text{font-size:1rem;font-weight:700;font-family:'JetBrains Mono',monospace}
+    .score-text{font-size:.85rem;color:var(--muted);font-family:'JetBrains Mono',monospace}
+    .cards-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px}
+    @media(max-width:560px){.cards-grid{grid-template-columns:1fr}}
+    .info-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px}
+    .info-card .label{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:8px}
+    .info-card .value{font-size:1.3rem;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--text)}
+    .info-card .sub{font-size:.8rem;color:var(--muted);margin-top:4px;font-family:'JetBrains Mono',monospace}
+    .charset-row{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+    .charset-chip{padding:6px 14px;border-radius:6px;font-size:.8rem;font-family:'JetBrains Mono',monospace;border:1px solid var(--border);background:var(--surface);color:var(--muted);transition:all .3s}
+    .charset-chip.active{border-color:var(--green);color:var(--green);background:#0d1f0d}
+    .section{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:16px}
+    .section h3{font-size:.7rem;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:14px}
+    .issue{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem;color:var(--red)}
+    .issue:last-child{border-bottom:none}
+    .issue::before{content:"⚠";flex-shrink:0}
+    .suggestion{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border);font-size:.88rem;color:var(--text)}
+    .suggestion:last-child{border-bottom:none}
+    .suggestion::before{content:"→";color:var(--purple);flex-shrink:0;font-family:'JetBrains Mono',monospace}
+    .empty-state{color:var(--muted);font-size:.88rem;font-family:'JetBrains Mono',monospace;padding:8px 0}
+    .all-good{color:var(--green);font-size:.88rem;font-family:'JetBrains Mono',monospace;padding:8px 0}
+    #placeholder{text-align:center;padding:60px 0;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.9rem}
+  </style>
+</head>
+<body>
+<header>
+  <h1>Password <span>Analyzer</span></h1>
+  <p>// entropy · crack time · pattern detection · zero data stored</p>
+</header>
+<div class="main">
+  <div class="input-wrap">
+    <input type="password" id="pwd-input" placeholder="type a password to analyze..." autocomplete="off" spellcheck="false"/>
+    <button class="toggle-vis" onclick="toggleVis()" id="vis-btn" title="Show/hide">👁</button>
+  </div>
+  <div class="meter-wrap" id="meter-wrap" style="display:none">
+    <div class="meter-bar"><div class="meter-fill" id="meter-fill"></div></div>
+    <div class="meter-label">
+      <span class="level-text" id="level-text"></span>
+      <span class="score-text" id="score-text"></span>
+    </div>
+  </div>
+  <div id="placeholder">// start typing to see results</div>
+  <div id="results" style="display:none">
+    <div class="cards-grid">
+      <div class="info-card">
+        <div class="label">Crack Time</div>
+        <div class="value" id="crack-time">—</div>
+        <div class="sub">fast offline attack</div>
+      </div>
+      <div class="info-card">
+        <div class="label">Entropy</div>
+        <div class="value" id="entropy">—</div>
+        <div class="sub">bits of randomness</div>
+      </div>
+    </div>
+    <div class="charset-row">
+      <div class="charset-chip" id="chip-lower">a–z</div>
+      <div class="charset-chip" id="chip-upper">A–Z</div>
+      <div class="charset-chip" id="chip-digit">0–9</div>
+      <div class="charset-chip" id="chip-symbol">!@#</div>
+    </div>
+    <div class="section" id="issues-section">
+      <h3>Detected Issues</h3>
+      <div id="issues-list"></div>
+    </div>
+    <div class="section">
+      <h3>Suggestions</h3>
+      <div id="suggestions-list"></div>
+    </div>
+  </div>
+</div>
+<script>
+  const COLORS = {
+    "Very Weak": "#f87171",
+    "Weak": "#fb923c",
+    "Moderate": "#facc15",
+    "Strong": "#4ade80"
+  };
+
+  let debounceTimer;
+  let visible = false;
+
+  document.getElementById("pwd-input").addEventListener("input", () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(analyze, 180);
+  });
+
+  function toggleVis(){
+    visible = !visible;
+    const inp = document.getElementById("pwd-input");
+    inp.type = visible ? "text" : "password";
+    document.getElementById("vis-btn").textContent = visible ? "🙈" : "👁";
+  }
+
+  async function analyze(){
+    const pwd = document.getElementById("pwd-input").value;
+    if(!pwd){
+      document.getElementById("placeholder").style.display="block";
+      document.getElementById("results").style.display="none";
+      document.getElementById("meter-wrap").style.display="none";
+      return;
+    }
+    try{
+      const res = await fetch("/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({password:pwd})});
+      const data = await res.json();
+      render(data);
+    }catch(e){}
+  }
+
+  function render(d){
+    document.getElementById("placeholder").style.display="none";
+    document.getElementById("results").style.display="block";
+    document.getElementById("meter-wrap").style.display="block";
+
+    const color = COLORS[d.level] || "#7c6af7";
+    const fill = document.getElementById("meter-fill");
+    fill.style.width = d.score + "%";
+    fill.style.background = color;
+
+    document.getElementById("level-text").textContent = d.level;
+    document.getElementById("level-text").style.color = color;
+    document.getElementById("score-text").textContent = `score: ${d.score}/100`;
+    document.getElementById("crack-time").textContent = d.crack_time;
+    document.getElementById("entropy").textContent = d.entropy + " bits";
+
+    ["lower","upper","digit","symbol"].forEach(k => {
+      const chip = document.getElementById("chip-"+k);
+      const key = "has_"+k;
+      chip.classList.toggle("active", !!d[key]);
+    });
+
+    const issuesList = document.getElementById("issues-list");
+    if(d.patterns && d.patterns.length){
+      issuesList.innerHTML = d.patterns.map(p=>`<div class="issue">${p}</div>`).join("");
+    } else {
+      issuesList.innerHTML = `<div class="all-good">✓ No obvious patterns detected.</div>`;
+    }
+
+    const sugList = document.getElementById("suggestions-list");
+    if(d.suggestions && d.suggestions.length){
+      sugList.innerHTML = d.suggestions.map(s=>`<div class="suggestion">${s}</div>`).join("");
+    } else {
+      sugList.innerHTML = `<div class="all-good">✓ Looks solid. No suggestions.</div>`;
+    }
+  }
+</script>
+</body>
+</html>
